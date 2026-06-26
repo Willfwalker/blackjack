@@ -150,11 +150,16 @@ export function recommendBasicStrategy(cards: Card[], dealer: Rank, options: { c
   };
 }
 
-export function recommendCountAwareStrategy(cards: Card[], dealer: Rank, trueCount: number, options?: { canSplit?: boolean; canDouble?: boolean }) {
+export function recommendCountAwareStrategy(
+  cards: Card[],
+  dealer: Rank,
+  trueCount: number,
+  options?: { canSplit?: boolean; canDouble?: boolean; allowInsurance?: boolean },
+) {
   const value = handValue(cards);
   const dealerTen = dealerValue(dealer) === 10;
 
-  if (dealer === "A" && trueCount >= 3) {
+  if ((options?.allowInsurance ?? true) && dealer === "A" && trueCount >= 3) {
     return { action: "I" as StrategyAction, label: "Insurance", note: "Index play: take insurance at true count +3 or higher." };
   }
 

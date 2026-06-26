@@ -1,8 +1,17 @@
 "use client";
 
 import { Eye, EyeOff } from "lucide-react";
-import { decksRemaining, discardDecks, recommendedCurrentBet, trueCount, type BlackjackGameState } from "@/lib/blackjack/game";
+import {
+  activeHand,
+  dealerVisibleCards,
+  decksRemaining,
+  discardDecks,
+  recommendedCurrentBet,
+  trueCount,
+  type BlackjackGameState,
+} from "@/lib/blackjack/game";
 import { formatCount } from "@/lib/blackjack/cards";
+import { recommendBasicStrategy, recommendCountAwareStrategy } from "@/lib/blackjack/strategy";
 
 export function CountHud({
   state,
@@ -14,6 +23,7 @@ export function CountHud({
   onToggle: () => void;
 }) {
   const tc = trueCount(state);
+  const advice = countAdvice(state, tc);
 
   return (
     <section className="rounded-md border border-neutral-200 bg-white p-4 shadow-sm">
@@ -34,6 +44,11 @@ export function CountHud({
           <HudStat label="True count" value={formatCount(tc)} />
           <HudStat label="Decks left" value={decksRemaining(state).toFixed(1)} />
           <HudStat label="Suggested bet" value={`${recommendedCurrentBet(state)} chips`} />
+          <div className="rounded-md border border-emerald-100 bg-emerald-50 p-3 sm:col-span-2 xl:col-span-4">
+            <p className="text-xs font-black uppercase tracking-wide text-emerald-800">What to do from the count</p>
+            <p className="mt-1 text-xl font-black text-emerald-950">{advice.title}</p>
+            <p className="mt-2 text-sm font-semibold leading-6 text-emerald-900">{advice.note}</p>
+          </div>
           <div className="rounded-md border border-neutral-200 bg-[#fbfaf7] p-3 sm:col-span-2 xl:col-span-4">
             <p className="text-xs font-black uppercase tracking-wide text-neutral-500">Hi-Lo tags</p>
             <p className="mt-2 text-sm font-semibold text-neutral-700">
@@ -48,6 +63,49 @@ export function CountHud({
       )}
     </section>
   );
+}
+
+function countAdvice(state: BlackjackGameState, tc: number) {
+  const hand = activeHand(state);
+  const dealer = dealerVisibleCards(state)[0];
+
+  if (state.phase === "insurance" && dealer?.rank === "A") {
+    if (tc >= 3) {
+      return {
+        title: "Take insurance",
+        note: `True count is ${formatCount(tc)}. Insurance becomes profitable at TC +3 or higher in the Hi-Lo system.`,
+      };
+    }
+
+    return {
+      title: "Decline insurance",
+      note: `True count is ${formatCount(tc)}. Below TC +3, insurance is still a bad side bet.`,
+    };
+  }
+
+  if (!hand || !dealer || state.phase !== "player") {
+    return {
+      title: "Deal a hand",
+      note: "The HUD will show the count-aware play once you have an active hand and dealer upcard.",
+    };
+  }
+
+  const canDouble = hand.cards.length === 2;
+  const canSplit = hand.cards.length === 2 && state.playerHands.length < state.rules.maxSplitHands;
+  const basic = recommendBasicStrategy(hand.cards, dealer.rank, { canDouble, canSplit });
+  const countAware = recommendCountAwareStrategy(hand.cards, dealer.rank, tc, {
+    canDouble,
+    canSplit,
+    allowInsurance: false,
+  });
+  const isDeviation = basic.action !== countAware.action;
+
+  return {
+    title: countAware.label,
+    note: isDeviation
+      ? `Count deviation: ${countAware.note} Basic strategy would say ${basic.label}.`
+      : `No count deviation here at TC ${formatCount(tc)}. ${countAware.note}`,
+  };
 }
 
 function HudStat({ label, value }: { label: string; value: string }) {
