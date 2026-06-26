@@ -42,19 +42,21 @@ export function CountHud({
         <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           <HudStat label="Running count" value={formatCount(state.runningCount)} />
           <HudStat label="True count" value={formatCount(tc)} />
-          <HudStat label="Decks left" value={decksRemaining(state).toFixed(1)} />
+          <HudStat label="Decks left" value={decksRemaining(state).toFixed(1)} className="hidden sm:block" />
           <HudStat label="Suggested bet" value={`${recommendedCurrentBet(state)} chips`} />
           <div className="rounded-md border border-emerald-100 bg-emerald-50 p-3 sm:col-span-2 xl:col-span-4">
             <p className="text-xs font-black uppercase tracking-wide text-emerald-800">What to do from the count</p>
             <p className="mt-1 text-xl font-black text-emerald-950">{advice.title}</p>
             <p className="mt-2 text-sm font-semibold leading-6 text-emerald-900">{advice.note}</p>
           </div>
-          <div className="rounded-md border border-neutral-200 bg-[#fbfaf7] p-3 sm:col-span-2 xl:col-span-4">
-            <p className="text-xs font-black uppercase tracking-wide text-neutral-500">Hi-Lo tags</p>
+          <details className="rounded-md border border-neutral-200 bg-[#fbfaf7] p-3 sm:col-span-2 xl:col-span-4">
+            <summary className="cursor-pointer text-xs font-black uppercase tracking-wide text-neutral-600">
+              Hi-Lo tags and deck details
+            </summary>
             <p className="mt-2 text-sm font-semibold text-neutral-700">
-              2-6 = +1, 7-9 = 0, 10-A = -1. Discard tray: {discardDecks(state).toFixed(1)} decks.
+              2-6 = +1, 7-9 = 0, 10-A = -1. Decks left: {decksRemaining(state).toFixed(1)}. Discard tray: {discardDecks(state).toFixed(1)} decks.
             </p>
-          </div>
+          </details>
         </div>
       ) : (
         <div className="mt-4 rounded-md border border-dashed border-neutral-300 bg-[#fbfaf7] p-4 text-sm font-semibold text-neutral-600">
@@ -108,9 +110,9 @@ function countAdvice(state: BlackjackGameState, tc: number) {
   };
 }
 
-function HudStat({ label, value }: { label: string; value: string }) {
+function HudStat({ label, value, className = "" }: { label: string; value: string; className?: string }) {
   return (
-    <div className="rounded-md border border-neutral-200 bg-[#fbfaf7] p-3">
+    <div className={`rounded-md border border-neutral-200 bg-[#fbfaf7] p-3 ${className}`}>
       <p className="text-xs font-black uppercase tracking-wide text-neutral-500">{label}</p>
       <p className="mt-1 text-2xl font-black text-neutral-950">{value}</p>
     </div>

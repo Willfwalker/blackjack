@@ -14,34 +14,54 @@ import {
   createInitialGameState,
   dealerVisibleCards,
   gameReducer,
+  type BlackjackGameState,
   type GameAction,
 } from "@/lib/blackjack/game";
 import { recommendBasicStrategy, type StrategyAction } from "@/lib/blackjack/strategy";
 import type { TrainingEvent } from "@/lib/blackjack/training";
 
 const PLAY_STATS_KEY = "blackjack-play-session-stats";
+const PLAY_STATE_KEY = "blackjack-play-table-state";
 
 export function BlackjackTable() {
   const [state, dispatchBase] = useReducer(gameReducer, undefined, createInitialGameState);
   const [hudVisible, setHudVisible] = useState(true);
   const [events, setEvents] = useState<TrainingEvent[]>([]);
+  const [stateRestored, setStateRestored] = useState(false);
 
   useEffect(() => {
     queueMicrotask(() => {
-      const raw = window.sessionStorage.getItem(PLAY_STATS_KEY);
-      if (!raw) return;
-      try {
-        const parsed = JSON.parse(raw) as TrainingEvent[];
-        if (Array.isArray(parsed)) setEvents(parsed);
-      } catch {
-        setEvents([]);
+      const rawStats = window.sessionStorage.getItem(PLAY_STATS_KEY);
+      if (rawStats) {
+        try {
+          const parsed = JSON.parse(rawStats) as TrainingEvent[];
+          if (Array.isArray(parsed)) setEvents(parsed);
+        } catch {
+          setEvents([]);
+        }
       }
+
+      const rawState = window.sessionStorage.getItem(PLAY_STATE_KEY);
+      if (rawState) {
+        try {
+          const parsed = JSON.parse(rawState) as BlackjackGameState;
+          if (isStoredGameState(parsed)) dispatchBase({ type: "hydrate", state: parsed });
+        } catch {
+          window.sessionStorage.removeItem(PLAY_STATE_KEY);
+        }
+      }
+      setStateRestored(true);
     });
   }, []);
 
   useEffect(() => {
     window.sessionStorage.setItem(PLAY_STATS_KEY, JSON.stringify(events));
   }, [events]);
+
+  useEffect(() => {
+    if (!stateRestored) return;
+    window.sessionStorage.setItem(PLAY_STATE_KEY, JSON.stringify(state));
+  }, [state, stateRestored]);
 
   function dispatch(action: GameAction) {
     dispatchBase(action);
@@ -90,6 +110,7 @@ export function BlackjackTable() {
 
   function resetAll() {
     window.sessionStorage.removeItem(PLAY_STATS_KEY);
+    window.sessionStorage.removeItem(PLAY_STATE_KEY);
     setEvents([]);
     dispatch({ type: "reset" });
   }
@@ -151,13 +172,13 @@ export function BlackjackTable() {
           </div>
         </div>
 
-        <div className="mt-6 rounded-md bg-black/25 p-4">
+        <div className="table-action-panel mt-6 rounded-md bg-black/25 p-4">
           <p className="flex items-center gap-2 text-sm font-black text-emerald-50">
             <ShieldCheck className="h-4 w-4" />
             {state.message}
           </p>
 
-          <div className="mt-4 flex flex-wrap gap-2">
+          <div className="table-action-buttons mt-4 flex flex-wrap gap-2">
             {state.phase === "betting" ? (
               <button
                 type="button"
@@ -219,6 +240,7 @@ export function BlackjackTable() {
             ) : null}
           </div>
         </div>
+        <div className="mobile-play-spacer" aria-hidden="true" />
       </section>
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_22rem]">
@@ -246,6 +268,24 @@ export function BlackjackTable() {
         </div>
       </div>
     </div>
+  );
+}
+
+function isStoredGameState(value: BlackjackGameState) {
+  return Boolean(
+    value &&
+      typeof value === "object" &&
+      Array.isArray(value.shoe) &&
+      Array.isArray(value.discard) &&
+      Array.isArray(value.playerHands) &&
+      Array.isArray(value.dealerCards) &&
+      typeof value.bankroll === "number" &&
+      typeof value.startingChips === "number" &&
+      typeof value.tableMinBet === "number" &&
+      typeof value.tableMaxBet === "number" &&
+      typeof value.sessionChipsWon === "number" &&
+      typeof value.sessionChipsLost === "number" &&
+      typeof value.phase === "string",
   );
 }
 

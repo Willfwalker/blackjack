@@ -39,7 +39,16 @@ function actionClass(action: StrategyAction) {
 
 export function BasicStrategySheet() {
   const [tab, setTab] = useState<SheetTab>("hard");
+  const [lookupHand, setLookupHand] = useState(hardTotalChart[0].hand);
+  const [lookupDealer, setLookupDealer] = useState("10");
   const chart = chartFor(tab);
+  const lookupRow = chart.find((row) => row.hand === lookupHand) ?? chart[0];
+  const lookupAction = lookupRow.values[lookupDealer] as StrategyAction;
+
+  function changeTab(nextTab: SheetTab) {
+    setTab(nextTab);
+    setLookupHand(chartFor(nextTab)[0].hand);
+  }
 
   return (
     <section className="min-w-0 rounded-md border border-neutral-200 bg-white p-5 shadow-sm">
@@ -56,12 +65,57 @@ export function BasicStrategySheet() {
             <button
               type="button"
               key={item.id}
-              onClick={() => setTab(item.id)}
+              onClick={() => changeTab(item.id)}
               className={`sheet-tab ${tab === item.id ? "sheet-tab-active" : ""}`}
             >
               {item.label}
             </button>
           ))}
+        </div>
+      </div>
+
+      <div className="mt-5 grid gap-3 rounded-md border border-emerald-100 bg-emerald-50 p-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] md:items-end">
+        <div>
+          <label htmlFor="strategy-hand" className="text-xs font-black uppercase tracking-wide text-emerald-800">
+            Your hand
+          </label>
+          <select
+            id="strategy-hand"
+            value={lookupRow.hand}
+            onChange={(event) => setLookupHand(event.target.value)}
+            className="strategy-select mt-2"
+          >
+            {chart.map((row) => (
+              <option key={row.hand} value={row.hand}>
+                {row.hand}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label htmlFor="strategy-dealer" className="text-xs font-black uppercase tracking-wide text-emerald-800">
+            Dealer upcard
+          </label>
+          <select
+            id="strategy-dealer"
+            value={lookupDealer}
+            onChange={(event) => setLookupDealer(event.target.value)}
+            className="strategy-select mt-2"
+          >
+            {dealerUpcards.map((upcard) => (
+              <option key={upcard} value={upcard === "J" || upcard === "Q" || upcard === "K" ? "10" : upcard}>
+                {upcard}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="rounded-md border border-emerald-200 bg-white p-4">
+          <p className="text-xs font-black uppercase tracking-wide text-emerald-800">Book says</p>
+          <p className="mt-2 flex items-center gap-2 text-2xl font-black text-neutral-950">
+            <span className={`strategy-cell ${actionClass(lookupAction)}`}>{lookupAction}</span>
+            {actionLabels[lookupAction]}
+          </p>
+          <p className="mt-2 text-sm font-semibold leading-6 text-neutral-700">{actionDescriptions[lookupAction]}</p>
         </div>
       </div>
 

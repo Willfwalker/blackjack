@@ -19,18 +19,21 @@ body {
 }
 
 button,
-input {
+input,
+select {
   font: inherit;
 }
 
 button:disabled,
-input:disabled {
+input:disabled,
+select:disabled {
   cursor: not-allowed;
   opacity: 0.55;
 }
 
 button:focus-visible,
 input:focus-visible,
+select:focus-visible,
 a:focus-visible {
   outline: 3px solid #047857;
   outline-offset: 2px;
@@ -183,6 +186,17 @@ a:focus-visible {
   padding: 0.75rem 1rem;
   font-weight: 800;
   color: #171717;
+}
+
+.strategy-select {
+  min-height: 2.75rem;
+  width: 100%;
+  border-radius: 0.375rem;
+  border: 1px solid #a7f3d0;
+  background: #ffffff;
+  padding: 0.75rem 1rem;
+  color: #171717;
+  font-weight: 900;
 }
 
 .answer-input::placeholder {
@@ -360,6 +374,14 @@ a:focus-visible {
   opacity: 0.45;
 }
 
+.table-action-panel {
+  border: 1px solid rgb(255 255 255 / 0.08);
+}
+
+.mobile-play-spacer {
+  display: none;
+}
+
 .chip-button {
   min-height: 3rem;
   border-radius: 999px;
@@ -476,6 +498,39 @@ a:focus-visible {
   color: #064e3b;
 }
 
+.mobile-bottom-nav {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 40;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  border-top: 1px solid #d4d4d4;
+  background: rgb(255 255 255 / 0.96);
+  padding: 0.45rem 0.5rem max(0.45rem, env(safe-area-inset-bottom));
+  box-shadow: 0 -10px 24px rgb(23 23 23 / 0.1);
+  backdrop-filter: blur(16px);
+}
+
+.mobile-bottom-link {
+  display: inline-flex;
+  min-height: 3rem;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.2rem;
+  border-radius: 0.375rem;
+  color: #525252;
+  font-size: 0.72rem;
+  font-weight: 950;
+}
+
+.mobile-bottom-link-active {
+  background: #ecfdf5;
+  color: #064e3b;
+}
+
 @keyframes deal-card {
   from {
     opacity: 0;
@@ -522,5 +577,48 @@ a:focus-visible {
   .deal-card-slot {
     grid-column: 1 / -1;
     grid-row: 1;
+  }
+
+  .table-action-panel {
+    position: fixed;
+    right: 0.75rem;
+    bottom: calc(4.7rem + env(safe-area-inset-bottom));
+    left: 0.75rem;
+    z-index: 35;
+    border: 1px solid rgb(255 255 255 / 0.2);
+    background: rgb(6 78 59 / 0.96);
+    box-shadow: 0 14px 36px rgb(0 0 0 / 0.28);
+    backdrop-filter: blur(16px);
+  }
+
+  .table-action-buttons {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .table-action-button {
+    min-height: 3rem;
+    padding-right: 0.75rem;
+    padding-left: 0.75rem;
+  }
+
+  .table-hand {
+    padding: 0.85rem;
+  }
+
+  .table-hand .card-face {
+    height: 6.75rem;
+    width: 4.5rem;
+  }
+
+  .mobile-play-spacer {
+    display: block;
+    height: 11rem;
+  }
+}
+
+@media (min-width: 768px) {
+  .mobile-bottom-nav {
+    display: none;
   }
 }

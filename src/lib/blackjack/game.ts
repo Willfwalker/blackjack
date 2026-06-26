@@ -53,6 +53,7 @@ export type BlackjackGameState = {
 };
 
 export type GameAction =
+  | { type: "hydrate"; state: BlackjackGameState }
   | { type: "setBet"; amount: number }
   | { type: "deal" }
   | { type: "insurance"; take: boolean }
@@ -129,6 +130,8 @@ function clampBet(state: BlackjackGameState, amount: number) {
 
 export function gameReducer(state: BlackjackGameState, action: GameAction): BlackjackGameState {
   switch (action.type) {
+    case "hydrate":
+      return action.state;
     case "setBet":
       return state.phase === "betting"
         ? { ...state, baseBet: clampBet(state, action.amount) }
