@@ -30,9 +30,18 @@ export type BlackjackGameState = {
   discard: Card[];
   seenCards: Card[];
   runningCount: number;
+  startingChips: number;
+  tableMinBet: number;
+  tableMaxBet: number;
   bankroll: number;
   baseBet: number;
   insuranceBet: number;
+  roundStartingBankroll: number;
+  sessionChipsWon: number;
+  sessionChipsLost: number;
+  sessionHandsWon: number;
+  sessionHandsLost: number;
+  sessionHandsPushed: number;
   phase: GamePhase;
   activeHandIndex: number;
   playerHands: PlayerHand[];
@@ -55,8 +64,10 @@ export type GameAction =
   | { type: "nextRound" }
   | { type: "reset" };
 
-const STARTING_BANKROLL = 1000;
-const DEFAULT_BET = 10;
+export const TABLE_MIN_BET = 10;
+export const TABLE_MAX_BET = 100;
+export const STARTING_CHIPS = 2000;
+const DEFAULT_BET = TABLE_MIN_BET;
 
 export function createInitialGameState(): BlackjackGameState {
   return {
@@ -65,9 +76,18 @@ export function createInitialGameState(): BlackjackGameState {
     discard: [],
     seenCards: [],
     runningCount: 0,
-    bankroll: STARTING_BANKROLL,
+    startingChips: STARTING_CHIPS,
+    tableMinBet: TABLE_MIN_BET,
+    tableMaxBet: TABLE_MAX_BET,
+    bankroll: STARTING_CHIPS,
     baseBet: DEFAULT_BET,
     insuranceBet: 0,
+    roundStartingBankroll: STARTING_CHIPS,
+    sessionChipsWon: 0,
+    sessionChipsLost: 0,
+    sessionHandsWon: 0,
+    sessionHandsLost: 0,
+    sessionHandsPushed: 0,
     phase: "betting",
     activeHandIndex: 0,
     playerHands: [],
@@ -100,14 +120,18 @@ export function dealerVisibleCards(state: BlackjackGameState) {
 }
 
 export function recommendedCurrentBet(state: BlackjackGameState) {
-  return recommendedBetUnits(trueCount(state)) * state.baseBet;
+  return Math.min(state.tableMaxBet, recommendedBetUnits(trueCount(state)) * state.tableMinBet);
+}
+
+function clampBet(state: BlackjackGameState, amount: number) {
+  return Math.max(state.tableMinBet, Math.min(amount, state.tableMaxBet, state.bankroll));
 }
 
 export function gameReducer(state: BlackjackGameState, action: GameAction): BlackjackGameState {
   switch (action.type) {
     case "setBet":
       return state.phase === "betting"
-        ? { ...state, baseBet: Math.max(5, Math.min(action.amount, state.bankroll)) }
+        ? { ...state, baseBet: clampBet(state, action.amount) }
         : state;
     case "deal":
       return dealRound(state);
@@ -161,7 +185,10 @@ function draw(state: BlackjackGameState, visible: boolean) {
 }
 
 function dealRound(state: BlackjackGameState): BlackjackGameState {
-  if (state.phase !== "betting" || state.bankroll < state.baseBet) return state;
+  if (state.phase !== "betting") return state;
+  if (state.bankroll < state.tableMinBet) {
+    return { ...state, message: `You need at least ${state.tableMinBet} chips to sit at this table.` };
+  }
 
   let next = state;
   const cutCardCards = Math.floor(next.rules.deckCount * 52 * (1 - next.rules.cutCardPenetration));
@@ -189,6 +216,7 @@ function dealRound(state: BlackjackGameState): BlackjackGameState {
   next = {
     ...next,
     bankroll: next.bankroll - bet,
+    roundStartingBankroll: next.bankroll,
     insuranceBet: 0,
     phase: "player",
     activeHandIndex: 0,
@@ -370,6 +398,10 @@ function settleRound(state: BlackjackGameState, message: string): BlackjackGameS
   const next = revealDealerHole(state);
   const dealer = handValue(next.dealerCards);
   let bankroll = next.bankroll;
+  let handsWon = 0;
+  let handsLost = 0;
+  let handsPushed = 0;
+
   const settledHands = next.playerHands.map((hand) => {
     const player = handValue(hand.cards);
     let result: RoundResult = "lose";
@@ -391,12 +423,26 @@ function settleRound(state: BlackjackGameState, message: string): BlackjackGameS
       bankroll += hand.bet;
     }
 
+    if (result === "win" || result === "blackjack") {
+      handsWon += 1;
+    } else if (result === "push") {
+      handsPushed += 1;
+    } else {
+      handsLost += 1;
+    }
+
     return { ...hand, status: hand.status === "playing" ? "stood" : hand.status, result };
   });
+  const roundNet = bankroll - next.roundStartingBankroll;
 
   return {
     ...next,
     bankroll,
+    sessionChipsWon: next.sessionChipsWon + Math.max(roundNet, 0),
+    sessionChipsLost: next.sessionChipsLost + Math.max(-roundNet, 0),
+    sessionHandsWon: next.sessionHandsWon + handsWon,
+    sessionHandsLost: next.sessionHandsLost + handsLost,
+    sessionHandsPushed: next.sessionHandsPushed + handsPushed,
     phase: "roundOver",
     playerHands: settledHands,
     message,
@@ -410,6 +456,7 @@ function prepareNextRound(state: BlackjackGameState): BlackjackGameState {
     ...state,
     discard: [...state.discard, ...state.playerHands.flatMap((hand) => hand.cards), ...state.dealerCards],
     insuranceBet: 0,
+    baseBet: clampBet(state, state.baseBet),
     phase: "betting",
     activeHandIndex: 0,
     playerHands: [],

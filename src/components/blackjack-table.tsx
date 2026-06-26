@@ -159,7 +159,12 @@ export function BlackjackTable() {
 
           <div className="mt-4 flex flex-wrap gap-2">
             {state.phase === "betting" ? (
-              <button type="button" onClick={() => dispatch({ type: "deal" })} className="table-action-button">
+              <button
+                type="button"
+                disabled={state.bankroll < state.tableMinBet}
+                onClick={() => dispatch({ type: "deal" })}
+                className="table-action-button"
+              >
                 Deal
               </button>
             ) : null}
@@ -221,6 +226,14 @@ export function BlackjackTable() {
           <BettingRail
             bankroll={state.bankroll}
             bet={state.baseBet}
+            startingChips={state.startingChips}
+            tableMinBet={state.tableMinBet}
+            tableMaxBet={state.tableMaxBet}
+            sessionChipsWon={state.sessionChipsWon}
+            sessionChipsLost={state.sessionChipsLost}
+            sessionHandsWon={state.sessionHandsWon}
+            sessionHandsLost={state.sessionHandsLost}
+            sessionHandsPushed={state.sessionHandsPushed}
             disabled={state.phase !== "betting"}
             onBetChange={(amount) => dispatch({ type: "setBet", amount })}
           />
