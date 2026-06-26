@@ -1,23 +1,24 @@
 "use client";
 
 import { useEffect, useReducer, useState } from "react";
-import { RotateCcw, ShieldCheck } from "lucide-react";
+import { CircleHelp, RotateCcw, ShieldCheck } from "lucide-react";
 import { PlayingCard } from "@/components/playing-card";
 import { BettingRail } from "@/components/betting-rail";
 import { CountHud } from "@/components/count-hud";
 import { DiscardTray } from "@/components/discard-tray";
 import { SessionStats } from "@/components/session-stats";
 import { StrategyPanel } from "@/components/strategy-panel";
-import { handValue, type Card } from "@/lib/blackjack/cards";
+import { formatCount, handValue, type Card } from "@/lib/blackjack/cards";
 import {
   activeHand,
   createInitialGameState,
   dealerVisibleCards,
   gameReducer,
+  trueCount,
   type BlackjackGameState,
   type GameAction,
 } from "@/lib/blackjack/game";
-import { recommendBasicStrategy, type StrategyAction } from "@/lib/blackjack/strategy";
+import { recommendBasicStrategy, recommendCountAwareStrategy, type StrategyAction } from "@/lib/blackjack/strategy";
 import type { TrainingEvent } from "@/lib/blackjack/training";
 
 const PLAY_STATS_KEY = "blackjack-play-session-stats";
@@ -26,6 +27,7 @@ const PLAY_STATE_KEY = "blackjack-play-table-state";
 export function BlackjackTable() {
   const [state, dispatchBase] = useReducer(gameReducer, undefined, createInitialGameState);
   const [hudVisible, setHudVisible] = useState(true);
+  const [actionHelpOpen, setActionHelpOpen] = useState(false);
   const [events, setEvents] = useState<TrainingEvent[]>([]);
   const [stateRestored, setStateRestored] = useState(false);
 
@@ -117,6 +119,7 @@ export function BlackjackTable() {
 
   const dealerCards = state.dealerHoleRevealed ? state.dealerCards : state.dealerCards.length > 0 ? [state.dealerCards[0], undefined] : [];
   const current = activeHand(state);
+  const actionHelp = getActionHelp(state);
 
   return (
     <div className="grid gap-6">
@@ -173,10 +176,30 @@ export function BlackjackTable() {
         </div>
 
         <div className="table-action-panel mt-6 rounded-md bg-black/25 p-4">
-          <p className="flex items-center gap-2 text-sm font-black text-emerald-50">
-            <ShieldCheck className="h-4 w-4" />
-            {state.message}
-          </p>
+          <div className="table-action-status-row">
+            <p className="flex min-w-0 items-center gap-2 text-sm font-black text-emerald-50">
+              <ShieldCheck className="h-4 w-4 flex-none" />
+              <span className="min-w-0">{state.message}</span>
+            </p>
+            <button
+              type="button"
+              aria-label="Show count decision help"
+              aria-expanded={actionHelpOpen}
+              onClick={() => setActionHelpOpen((open) => !open)}
+              className="table-help-button"
+            >
+              <CircleHelp className="h-4 w-4" />
+            </button>
+          </div>
+
+          {actionHelpOpen ? (
+            <div className="action-help-popover">
+              <HelpStat label="RC" value={actionHelp.runningCount} />
+              <HelpStat label="TC" value={actionHelp.trueCount} />
+              <HelpStat label="Book says" value={actionHelp.book} />
+              <HelpStat label="Counting logic" value={actionHelp.countLogic} />
+            </div>
+          ) : null}
 
           <div className="table-action-buttons mt-4 flex flex-wrap gap-2">
             {state.phase === "betting" ? (
@@ -267,6 +290,55 @@ export function BlackjackTable() {
           <SessionStats events={events} handsPlayed={state.handsPlayed} />
         </div>
       </div>
+    </div>
+  );
+}
+
+function getActionHelp(state: BlackjackGameState) {
+  const tc = trueCount(state);
+  const dealer = dealerVisibleCards(state)[0];
+  const hand = activeHand(state);
+
+  if (state.phase === "insurance" && dealer?.rank === "A") {
+    return {
+      runningCount: formatCount(state.runningCount),
+      trueCount: formatCount(tc),
+      book: "Decline insurance",
+      countLogic: tc >= 3 ? "Take insurance at TC +3 or higher" : "Decline insurance below TC +3",
+    };
+  }
+
+  if (state.phase === "player" && hand && dealer) {
+    const canDouble = hand.cards.length === 2;
+    const canSplit = hand.cards.length === 2 && state.playerHands.length < state.rules.maxSplitHands;
+    const book = recommendBasicStrategy(hand.cards, dealer.rank, { canDouble, canSplit });
+    const counting = recommendCountAwareStrategy(hand.cards, dealer.rank, tc, {
+      canDouble,
+      canSplit,
+      allowInsurance: false,
+    });
+
+    return {
+      runningCount: formatCount(state.runningCount),
+      trueCount: formatCount(tc),
+      book: book.label,
+      countLogic: counting.action === book.action ? `${counting.label} - no count deviation` : counting.label,
+    };
+  }
+
+  return {
+    runningCount: formatCount(state.runningCount),
+    trueCount: formatCount(tc),
+    book: state.phase === "roundOver" ? "Next round" : "Deal the hand",
+    countLogic: state.phase === "betting" ? `Bet ${state.baseBet} or use the suggested ramp` : "No active decision",
+  };
+}
+
+function HelpStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <p className="text-[0.68rem] font-black uppercase tracking-wide text-emerald-100">{label}</p>
+      <p className="mt-0.5 text-xs font-black leading-4 text-white">{value}</p>
     </div>
   );
 }
