@@ -23,6 +23,9 @@ type DeviationScenario = {
   tc: number;
 };
 
+const hiLoMinCards = 3;
+const hiLoMaxCards = 30;
+
 const toolTabs: { id: ToolTab; label: string; icon: LucideIcon }[] = [
   { id: "hi-lo", label: "Hi-Lo", icon: Brain },
   { id: "strategy", label: "Strategy", icon: ListChecks },
@@ -72,10 +75,15 @@ const initialShoeCards = [
   makeCardFromRank("3", "C", "shoe-3c"),
 ];
 
+function makeHiLoCards(count: number) {
+  return makeShoe(1).slice(0, count);
+}
+
 export function TrainingTools() {
   const [tab, setTab] = useState<ToolTab>("hi-lo");
   const [events, setEvents] = useState<TrainingEvent[]>([]);
-  const [hiLoCards, setHiLoCards] = useState(() => makeShoe(1).slice(0, 9));
+  const [hiLoCardCount, setHiLoCardCount] = useState(9);
+  const [hiLoCards, setHiLoCards] = useState(() => makeHiLoCards(9));
   const [hiLoPhase, setHiLoPhase] = useState<HiLoPhase>("ready");
   const [hiLoDealIndex, setHiLoDealIndex] = useState(0);
   const [hiLoCardVisible, setHiLoCardVisible] = useState(false);
@@ -124,12 +132,18 @@ export function TrainingTools() {
     setEvents((previous) => [...previous, event]);
   }
 
-  function resetHiLoDeal() {
-    setHiLoCards(makeShoe(1).slice(0, Math.floor(Math.random() * 7) + 6));
+  function resetHiLoDeal(count = hiLoCardCount) {
+    setHiLoCards(makeHiLoCards(count));
     setHiLoGuess("");
     setHiLoDealIndex(0);
     setHiLoCardVisible(false);
     setHiLoPhase("ready");
+  }
+
+  function changeHiLoCardCount(count: number) {
+    const nextCount = Math.min(hiLoMaxCards, Math.max(hiLoMinCards, count));
+    setHiLoCardCount(nextCount);
+    resetHiLoDeal(nextCount);
   }
 
   function startHiLoDeal() {
@@ -279,7 +293,40 @@ export function TrainingTools() {
                 </div>
               </div>
 
-              <div className="grid gap-4 rounded-md border border-neutral-200 bg-[#fbfaf7] p-4 lg:grid-cols-[1fr_auto] lg:items-center">
+              <div className="grid gap-4 rounded-md border border-neutral-200 bg-[#fbfaf7] p-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] lg:items-end">
+                <label className="grid gap-2">
+                  <span className="flex flex-wrap items-center justify-between gap-2 text-sm font-black text-neutral-800">
+                    Cards to flip
+                    <span className="rounded-md bg-white px-2 py-1 text-xs text-neutral-600 shadow-sm">
+                      {hiLoCardCount} cards
+                    </span>
+                  </span>
+                  <input
+                    aria-label="Cards to flip"
+                    type="range"
+                    min={hiLoMinCards}
+                    max={hiLoMaxCards}
+                    step="1"
+                    value={hiLoCardCount}
+                    disabled={hiLoPhase === "dealing"}
+                    onChange={(event) => changeHiLoCardCount(Number(event.target.value))}
+                    className="speed-slider"
+                  />
+                  <span className="grid grid-cols-4 gap-2">
+                    {[6, 9, 12, 18].map((count) => (
+                      <button
+                        type="button"
+                        key={count}
+                        disabled={hiLoPhase === "dealing"}
+                        onClick={() => changeHiLoCardCount(count)}
+                        className={`speed-preset ${hiLoCardCount === count ? "speed-preset-active" : ""}`}
+                      >
+                        {count}
+                      </button>
+                    ))}
+                  </span>
+                </label>
+
                 <label className="grid gap-2">
                   <span className="flex flex-wrap items-center justify-between gap-2 text-sm font-black text-neutral-800">
                     Deal speed
@@ -336,7 +383,7 @@ export function TrainingTools() {
                 <button type="button" onClick={checkHiLo} disabled={hiLoPhase !== "answering"} className="primary-button">
                   Check count
                 </button>
-                <button type="button" onClick={resetHiLoDeal} className="secondary-button">
+                <button type="button" onClick={() => resetHiLoDeal()} className="secondary-button">
                   <RotateCcw className="h-4 w-4" />
                   New deal
                 </button>
