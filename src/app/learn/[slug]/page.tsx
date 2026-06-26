@@ -47,10 +47,12 @@ export default async function LessonPage({ params }: LessonPageProps) {
     <main className="min-h-screen bg-[#f7f3ea] text-neutral-950">
       <section className="border-b border-neutral-200 bg-white">
         <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
-          <Link href="/?mode=learn" className="icon-text-button hidden w-fit md:inline-flex">
-            <ArrowLeft className="h-4 w-4" />
-            Back to trainer
-          </Link>
+          <div className="hidden md:block">
+            <Link href="/?mode=learn" className="icon-text-button w-fit">
+              <ArrowLeft className="h-4 w-4" />
+              Back to trainer
+            </Link>
+          </div>
 
           <div className="mt-0 grid gap-6 md:mt-6 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-end">
             <div>
