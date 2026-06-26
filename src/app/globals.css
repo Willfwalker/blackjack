@@ -39,11 +39,7 @@ a:focus-visible {
   outline-offset: 2px;
 }
 
-.drill-button,
-.primary-button,
-.secondary-button,
-.icon-text-button,
-.choice-button {
+:where(.drill-button, .primary-button, .secondary-button, .icon-text-button, .choice-button) {
   display: inline-flex;
   min-height: 2.75rem;
   align-items: center;
