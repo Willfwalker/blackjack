@@ -55,6 +55,7 @@ export type BlackjackGameState = {
 export type GameAction =
   | { type: "hydrate"; state: BlackjackGameState }
   | { type: "setBet"; amount: number }
+  | { type: "randomizeShoe" }
   | { type: "deal" }
   | { type: "insurance"; take: boolean }
   | { type: "hit" }
@@ -136,6 +137,8 @@ export function gameReducer(state: BlackjackGameState, action: GameAction): Blac
       return state.phase === "betting"
         ? { ...state, baseBet: clampBet(state, action.amount) }
         : state;
+    case "randomizeShoe":
+      return randomizeShoePosition(state);
     case "deal":
       return dealRound(state);
     case "insurance":
@@ -157,6 +160,41 @@ export function gameReducer(state: BlackjackGameState, action: GameAction): Blac
     default:
       return state;
   }
+}
+
+function randomizeShoePosition(state: BlackjackGameState): BlackjackGameState {
+  if (state.phase !== "betting" && state.phase !== "roundOver") {
+    return { ...state, message: "Finish the current hand before jumping to a random shoe spot." };
+  }
+
+  const freshShoe = makeShoe(state.rules.deckCount);
+  const totalCards = state.rules.deckCount * 52;
+  const cutCardCards = Math.floor(totalCards * state.rules.cutCardPenetration);
+  const minimumSeen = Math.floor(0.75 * 52);
+  const maximumSeen = Math.max(minimumSeen, cutCardCards - 12);
+  const seenCount = minimumSeen + Math.floor(Math.random() * (maximumSeen - minimumSeen + 1));
+  const discard = freshShoe.slice(0, seenCount);
+  const shoe = freshShoe.slice(seenCount);
+  const runningCount = discard.reduce((sum, card) => sum + hiLoValue(card.rank), 0);
+  const decksLeft = Math.max(shoe.length / 52, 0.5);
+  const nextTrueCount = Math.trunc(runningCount / decksLeft);
+
+  return {
+    ...state,
+    shoe,
+    discard,
+    seenCards: discard,
+    runningCount,
+    insuranceBet: 0,
+    roundStartingBankroll: state.bankroll,
+    phase: "betting",
+    activeHandIndex: 0,
+    playerHands: [],
+    dealerCards: [],
+    dealerHoleRevealed: false,
+    baseBet: clampBet(state, recommendedBetUnits(nextTrueCount) * state.tableMinBet),
+    message: `Random shoe spot: ${(seenCount / 52).toFixed(1)} decks in, RC ${formatCount(runningCount)}, TC ${formatCount(nextTrueCount)}.`,
+  };
 }
 
 function draw(state: BlackjackGameState, visible: boolean) {

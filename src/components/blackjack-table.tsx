@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useReducer, useState } from "react";
-import { CircleHelp, RotateCcw, ShieldCheck } from "lucide-react";
+import { CircleHelp, RotateCcw, ShieldCheck, Shuffle } from "lucide-react";
 import { PlayingCard } from "@/components/playing-card";
 import { BettingRail } from "@/components/betting-rail";
 import { CountHud } from "@/components/count-hud";
@@ -114,7 +114,13 @@ export function BlackjackTable() {
     window.sessionStorage.removeItem(PLAY_STATS_KEY);
     window.sessionStorage.removeItem(PLAY_STATE_KEY);
     setEvents([]);
+    setActionHelpOpen(false);
     dispatch({ type: "reset" });
+  }
+
+  function randomizeShoe() {
+    setActionHelpOpen(false);
+    dispatch({ type: "randomizeShoe" });
   }
 
   const dealerCards = state.dealerHoleRevealed ? state.dealerCards : state.dealerCards.length > 0 ? [state.dealerCards[0], undefined] : [];
@@ -132,10 +138,21 @@ export function BlackjackTable() {
               3:2 blackjack, H17, DAS, late surrender. Practice real game flow with the count HUD on or hidden.
             </p>
           </div>
-          <button type="button" onClick={resetAll} className="table-light-button">
-            <RotateCcw className="h-4 w-4" />
-            Reset table
-          </button>
+          <div className="grid gap-2 sm:grid-cols-2">
+            <button
+              type="button"
+              onClick={randomizeShoe}
+              disabled={state.phase !== "betting" && state.phase !== "roundOver"}
+              className="table-light-button"
+            >
+              <Shuffle className="h-4 w-4" />
+              Random spot
+            </button>
+            <button type="button" onClick={resetAll} className="table-light-button">
+              <RotateCcw className="h-4 w-4" />
+              Reset table
+            </button>
+          </div>
         </div>
 
         <div className="mt-6 grid gap-6">
