@@ -153,6 +153,17 @@ export function TrainingTools() {
     setHiLoPhase("dealing");
   }
 
+  function updateHiLoGuess(value: string) {
+    const trimmed = value.trim();
+    const sign = trimmed.startsWith("-") ? "-" : "";
+    const digits = trimmed.replace(/[^0-9]/g, "");
+    setHiLoGuess(`${sign}${digits}`);
+  }
+
+  function toggleHiLoGuessSign() {
+    setHiLoGuess((current) => (current.startsWith("-") ? current.slice(1) : `-${current}`));
+  }
+
   function checkHiLo() {
     const hasAnswer = hiLoGuess.trim() !== "";
     const numeric = Number(hiLoGuess);
@@ -369,17 +380,29 @@ export function TrainingTools() {
                 </button>
               </div>
 
-              <div className="flex flex-col gap-3 sm:flex-row">
-                <input
-                  aria-label="Running count answer"
-                  type="number"
-                  inputMode="numeric"
-                  value={hiLoGuess}
-                  onChange={(event) => setHiLoGuess(event.target.value)}
-                  disabled={hiLoPhase !== "answering"}
-                  className="answer-input"
-                  placeholder="Running count"
-                />
+              <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto_auto]">
+                <div className="grid grid-cols-[3.5rem_minmax(0,1fr)] gap-2">
+                  <button
+                    type="button"
+                    aria-label="Toggle negative running count"
+                    disabled={hiLoPhase !== "answering"}
+                    onClick={toggleHiLoGuessSign}
+                    className="secondary-button px-0"
+                  >
+                    +/-
+                  </button>
+                  <input
+                    aria-label="Running count answer"
+                    type="text"
+                    inputMode="numeric"
+                    pattern="-?[0-9]*"
+                    value={hiLoGuess}
+                    onChange={(event) => updateHiLoGuess(event.target.value)}
+                    disabled={hiLoPhase !== "answering"}
+                    className="answer-input"
+                    placeholder="Running count"
+                  />
+                </div>
                 <button type="button" onClick={checkHiLo} disabled={hiLoPhase !== "answering"} className="primary-button">
                   Check count
                 </button>
