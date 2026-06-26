@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
-import { Calculator, ChartNoAxesCombined, Layers, ListChecks, RotateCcw, Target, type LucideIcon } from "lucide-react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { Brain, Calculator, ChartNoAxesCombined, Layers, ListChecks, Play, RotateCcw, Target, type LucideIcon } from "lucide-react";
 import { PlayingCard } from "@/components/playing-card";
 import { SessionStats } from "@/components/session-stats";
 import { formatCount, hiLoValue, makeShoe, type Card, type Rank } from "@/lib/blackjack/cards";
@@ -14,7 +14,8 @@ import {
   type TrainingEvent,
 } from "@/lib/blackjack/training";
 
-type ToolTab = "strategy" | "deck" | "bet" | "deviation" | "shoe";
+type ToolTab = "hi-lo" | "strategy" | "deck" | "bet" | "deviation" | "shoe";
+type HiLoPhase = "ready" | "dealing" | "answering";
 type StrategyFlashcard = ReturnType<typeof makeStrategyFlashcard>;
 type DeviationScenario = {
   cards: Card[];
@@ -23,6 +24,7 @@ type DeviationScenario = {
 };
 
 const toolTabs: { id: ToolTab; label: string; icon: LucideIcon }[] = [
+  { id: "hi-lo", label: "Hi-Lo", icon: Brain },
   { id: "strategy", label: "Strategy", icon: ListChecks },
   { id: "deck", label: "Decks", icon: Layers },
   { id: "bet", label: "Bet ramp", icon: ChartNoAxesCombined },
@@ -71,8 +73,14 @@ const initialShoeCards = [
 ];
 
 export function TrainingTools() {
-  const [tab, setTab] = useState<ToolTab>("strategy");
+  const [tab, setTab] = useState<ToolTab>("hi-lo");
   const [events, setEvents] = useState<TrainingEvent[]>([]);
+  const [hiLoCards, setHiLoCards] = useState(() => makeShoe(1).slice(0, 9));
+  const [hiLoPhase, setHiLoPhase] = useState<HiLoPhase>("ready");
+  const [hiLoDealIndex, setHiLoDealIndex] = useState(0);
+  const [hiLoCardVisible, setHiLoCardVisible] = useState(false);
+  const [hiLoSpeed, setHiLoSpeed] = useState(700);
+  const [hiLoGuess, setHiLoGuess] = useState("");
   const [strategyCard, setStrategyCard] = useState<StrategyFlashcard>(initialStrategyCard);
   const [deckGuess, setDeckGuess] = useState("");
   const [deckActual, setDeckActual] = useState(2.5);
@@ -82,8 +90,66 @@ export function TrainingTools() {
   const [shoeCards, setShoeCards] = useState(initialShoeCards);
   const [shoeGuess, setShoeGuess] = useState("");
 
+  useEffect(() => {
+    if (hiLoPhase !== "dealing") return;
+
+    const showMs = Math.max(180, Math.round(hiLoSpeed * 0.68));
+    const hideMs = Math.max(120, hiLoSpeed - showMs);
+    const timeout = window.setTimeout(
+      () => {
+        if (hiLoCardVisible) {
+          setHiLoCardVisible(false);
+          return;
+        }
+
+        const nextIndex = hiLoDealIndex + 1;
+        if (nextIndex >= hiLoCards.length) {
+          setHiLoPhase("answering");
+          return;
+        }
+
+        setHiLoDealIndex(nextIndex);
+        setHiLoCardVisible(true);
+      },
+      hiLoCardVisible ? showMs : hideMs,
+    );
+
+    return () => window.clearTimeout(timeout);
+  }, [hiLoCardVisible, hiLoCards.length, hiLoDealIndex, hiLoPhase, hiLoSpeed]);
+
+  const hiLoAnswer = useMemo(() => hiLoCards.reduce((sum, card) => sum + hiLoValue(card.rank), 0), [hiLoCards]);
+  const currentHiLoCard = hiLoPhase === "dealing" && hiLoCardVisible ? hiLoCards[hiLoDealIndex] : null;
+
   function addEvent(event: TrainingEvent) {
     setEvents((previous) => [...previous, event]);
+  }
+
+  function resetHiLoDeal() {
+    setHiLoCards(makeShoe(1).slice(0, Math.floor(Math.random() * 7) + 6));
+    setHiLoGuess("");
+    setHiLoDealIndex(0);
+    setHiLoCardVisible(false);
+    setHiLoPhase("ready");
+  }
+
+  function startHiLoDeal() {
+    setHiLoGuess("");
+    setHiLoDealIndex(0);
+    setHiLoCardVisible(true);
+    setHiLoPhase("dealing");
+  }
+
+  function checkHiLo() {
+    const hasAnswer = hiLoGuess.trim() !== "";
+    const numeric = Number(hiLoGuess);
+    addEvent({
+      category: "count",
+      correct: hiLoPhase === "answering" && hasAnswer && numeric === hiLoAnswer,
+      prompt: `${hiLoCards.length}-card Hi-Lo deal`,
+      expected: formatCount(hiLoAnswer),
+      actual: hiLoGuess || "blank",
+    });
+    resetHiLoDeal();
   }
 
   function checkStrategy(answer: string) {
@@ -165,7 +231,7 @@ export function TrainingTools() {
   return (
     <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_22rem]">
       <section className="rounded-md border border-neutral-200 bg-white p-4 shadow-sm">
-        <div className="grid gap-2 sm:grid-cols-5">
+        <div className="grid gap-2 sm:grid-cols-3 xl:grid-cols-6">
           {toolTabs.map((item) => {
             const Icon = item.icon;
             return (
@@ -183,6 +249,101 @@ export function TrainingTools() {
         </div>
 
         <div className="mt-6">
+          {tab === "hi-lo" ? (
+            <ToolPanel title="Animated Hi-Lo drill">
+              <div className="deal-table" aria-live="polite">
+                <div className="deal-shoe">
+                  <span className="text-xs font-black uppercase tracking-wide text-emerald-100">Shoe</span>
+                  <span className="text-2xl font-black text-white">{hiLoCards.length}</span>
+                </div>
+
+                <div className="deal-card-slot">
+                  {currentHiLoCard ? (
+                    <div key={`${currentHiLoCard.id}-${hiLoDealIndex}`} className="deal-card-motion">
+                      <PlayingCard card={currentHiLoCard} />
+                    </div>
+                  ) : (
+                    <div className="deal-empty">
+                      {hiLoPhase === "answering" ? "Now answer" : hiLoPhase === "dealing" ? "Card cleared" : "Press start"}
+                    </div>
+                  )}
+                </div>
+
+                <div className="deal-counter">
+                  <span className="text-xs font-black uppercase tracking-wide text-emerald-100">
+                    {hiLoPhase === "dealing" ? "Dealing" : hiLoPhase === "answering" ? "Finished" : "Ready"}
+                  </span>
+                  <span className="text-2xl font-black text-white">
+                    {hiLoPhase === "ready" ? "0" : Math.min(hiLoDealIndex + 1, hiLoCards.length)}/{hiLoCards.length}
+                  </span>
+                </div>
+              </div>
+
+              <div className="grid gap-4 rounded-md border border-neutral-200 bg-[#fbfaf7] p-4 lg:grid-cols-[1fr_auto] lg:items-center">
+                <label className="grid gap-2">
+                  <span className="flex flex-wrap items-center justify-between gap-2 text-sm font-black text-neutral-800">
+                    Deal speed
+                    <span className="rounded-md bg-white px-2 py-1 text-xs text-neutral-600 shadow-sm">
+                      {hiLoSpeed} ms/card
+                    </span>
+                  </span>
+                  <input
+                    aria-label="Deal speed"
+                    type="range"
+                    min="250"
+                    max="1400"
+                    step="50"
+                    value={hiLoSpeed}
+                    disabled={hiLoPhase === "dealing"}
+                    onChange={(event) => setHiLoSpeed(Number(event.target.value))}
+                    className="speed-slider"
+                  />
+                  <span className="grid grid-cols-3 gap-2">
+                    {[
+                      { label: "Fast", value: 350 },
+                      { label: "Table", value: 700 },
+                      { label: "Slow", value: 1100 },
+                    ].map((preset) => (
+                      <button
+                        type="button"
+                        key={preset.label}
+                        disabled={hiLoPhase === "dealing"}
+                        onClick={() => setHiLoSpeed(preset.value)}
+                        className={`speed-preset ${hiLoSpeed === preset.value ? "speed-preset-active" : ""}`}
+                      >
+                        {preset.label}
+                      </button>
+                    ))}
+                  </span>
+                </label>
+                <button type="button" onClick={startHiLoDeal} disabled={hiLoPhase === "dealing"} className="primary-button">
+                  <Play className="h-4 w-4" />
+                  {hiLoPhase === "answering" ? "Replay deal" : "Start deal"}
+                </button>
+              </div>
+
+              <div className="flex flex-col gap-3 sm:flex-row">
+                <input
+                  aria-label="Running count answer"
+                  type="number"
+                  inputMode="numeric"
+                  value={hiLoGuess}
+                  onChange={(event) => setHiLoGuess(event.target.value)}
+                  disabled={hiLoPhase !== "answering"}
+                  className="answer-input"
+                  placeholder="Running count"
+                />
+                <button type="button" onClick={checkHiLo} disabled={hiLoPhase !== "answering"} className="primary-button">
+                  Check count
+                </button>
+                <button type="button" onClick={resetHiLoDeal} className="secondary-button">
+                  <RotateCcw className="h-4 w-4" />
+                  New deal
+                </button>
+              </div>
+            </ToolPanel>
+          ) : null}
+
           {tab === "strategy" ? (
             <ToolPanel title="Basic strategy flashcards">
               <div className="flex flex-wrap items-center gap-4">

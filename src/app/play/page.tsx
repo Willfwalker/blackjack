@@ -10,7 +10,7 @@ export const metadata = {
 export default function PlayPage() {
   return (
     <main className="min-h-screen bg-[#f7f3ea] text-neutral-950">
-      <section className="border-b border-neutral-200 bg-white">
+      <section className="hidden border-b border-neutral-200 bg-white md:block">
         <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
           <Link href="/" className="icon-text-button w-fit">
             <ArrowLeft className="h-4 w-4" />

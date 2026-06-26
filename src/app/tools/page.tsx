@@ -12,11 +12,11 @@ export default function ToolsPage() {
     <main className="min-h-screen bg-[#f7f3ea] text-neutral-950">
       <section className="border-b border-neutral-200 bg-white">
         <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-          <Link href="/" className="icon-text-button w-fit">
+          <Link href="/" className="icon-text-button hidden w-fit md:inline-flex">
             <ArrowLeft className="h-4 w-4" />
             Back to hub
           </Link>
-          <p className="mt-6 text-sm font-black uppercase tracking-wide text-emerald-800">Training suite</p>
+          <p className="mt-0 text-sm font-black uppercase tracking-wide text-emerald-800 md:mt-6">Training suite</p>
           <h1 className="mt-3 max-w-4xl text-4xl font-black tracking-normal sm:text-5xl">
             Drill the skills that break at a real table.
           </h1>

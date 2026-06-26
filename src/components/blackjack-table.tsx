@@ -7,7 +7,6 @@ import { BettingRail } from "@/components/betting-rail";
 import { CountHud } from "@/components/count-hud";
 import { DiscardTray } from "@/components/discard-tray";
 import { SessionStats } from "@/components/session-stats";
-import { StrategyPanel } from "@/components/strategy-panel";
 import { formatCount, handValue, type Card } from "@/lib/blackjack/cards";
 import {
   activeHand,
@@ -300,7 +299,6 @@ export function BlackjackTable() {
             onBetChange={(amount) => dispatch({ type: "setBet", amount })}
           />
           <CountHud state={state} visible={hudVisible} onToggle={() => setHudVisible((currentValue) => !currentValue)} />
-          <StrategyPanel state={state} visible={hudVisible} />
         </div>
         <div className="grid h-fit gap-6">
           <DiscardTray state={state} />

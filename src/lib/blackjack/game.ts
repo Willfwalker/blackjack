@@ -9,7 +9,6 @@ import {
   type Card,
 } from "./cards";
 import { defaultRules, type BlackjackRules } from "./rules";
-import { recommendBasicStrategy } from "./strategy";
 import { recommendedBetUnits } from "./training";
 
 export type GamePhase = "betting" | "insurance" | "player" | "dealer" | "roundOver";
@@ -505,18 +504,4 @@ function prepareNextRound(state: BlackjackGameState): BlackjackGameState {
     dealerHoleRevealed: false,
     message: `Next hand. Suggested bet: ${recommendedCurrentBet(state)} chips at TC ${formatCount(trueCount(state))}.`,
   };
-}
-
-export function currentStrategyText(state: BlackjackGameState) {
-  const hand = activeHand(state);
-  const dealer = dealerVisibleCards(state)[0];
-
-  if (!hand || !dealer || state.phase !== "player") return "Deal a hand to see the book play.";
-
-  const recommendation = recommendBasicStrategy(hand.cards, dealer.rank, {
-    canDouble: hand.cards.length === 2,
-    canSplit: hand.cards.length === 2 && state.playerHands.length < state.rules.maxSplitHands,
-  });
-
-  return `${recommendation.label}: ${recommendation.note}`;
 }
